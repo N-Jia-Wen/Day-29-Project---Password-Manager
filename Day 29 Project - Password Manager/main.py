@@ -2,6 +2,7 @@ from tkinter import *
 from tkinter import messagebox
 from password_generator import random_password
 import pyperclip
+import json
 
 
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
@@ -20,6 +21,12 @@ def save():
     website = website_entry.get()
     email_or_username = email_username_entry.get()
     password = password_entry.get()
+    new_data = {
+        website: {
+            "email/username": email_or_username,
+            "password": password
+        }
+    }
 
     if len(website) == 0 or len(email_or_username) == 0 or len(password) == 0:
         messagebox.showinfo(title="Blank Fields", message="You've left some fields blank. Please try again.")
@@ -32,11 +39,56 @@ def save():
                                                                                  f"\n Is this okay to save?")
 
         if is_okay is True:
-            with open(file="data.txt", mode="a") as file:
-                file.write(f"{website} | {email_or_username} | {password}\n")
+            try:
+                with open(file="data.json", mode="r") as file:
+                    data = json.load(file)
+                    data.update(new_data)
 
-            website_entry.delete(0, END)
-            password_entry.delete(0, END)
+                with open(file="data.json", mode="w") as file:
+                    json.dump(data, file, indent=4)
+
+            # To account for when json file does not yet exist when running programme for the first time:
+            except FileNotFoundError:
+                with open(file="data.json", mode="w") as file:
+                    json.dump(new_data, file, indent=4)
+
+            finally:
+                website_entry.delete(0, END)
+                password_entry.delete(0, END)
+
+# ---------------------------- SEARCH FOR INFORMATION ------------------------------- #
+
+
+def search_password():
+    website = website_entry.get()
+    # Tells user that field is blank and does not execute further code
+    if len(website) == 0:
+        messagebox.showinfo(title="Empty Field", message="Please enter the name of the website.")
+    else:
+        
+        try:
+            with open(file="data.json", mode="r") as file:
+                data = json.load(file)
+
+        # Catches error is json file does not exist and informs the user:
+        except FileNotFoundError:
+            messagebox.showinfo(title="JSON File Not Found", message="You have not saved any information yet.")
+
+        else:
+
+            # Otherwise, obtains data of particulars saved for that website by using name of website as key.
+            website_info = data.get(website)
+            if website_info is not None:
+                saved_email_or_username = website_info.get("email/username")
+                saved_password = website_info.get("password")
+                messagebox.showinfo(title=f"Details for {website} account",
+                                    message=f"Email/Username: {saved_email_or_username}\nPassword: {saved_password}")
+
+            # If info on that particular website is not found, it informs the user that it is so.
+            elif website_info is None:
+                messagebox.showinfo(title="Website Info Not Found",
+                                    message=f"Sorry, there is no details related to the website {website}.\n"
+                                            f"Do note that this search function is case sensitive.")
 
 
 # ---------------------------- UI SETUP ------------------------------- #
@@ -62,16 +114,16 @@ password_label = Label(text="Password:")
 password_label.grid(row=3, column=0)
 
 # All Entries:
-website_entry = Entry(width=40)
-website_entry.grid(row=1, column=1, columnspan=2)
+website_entry = Entry(width=33)
+website_entry.place(x=131, y=208)
 website_entry.focus()
 
 email_username_entry = Entry(width=40)
 email_username_entry.grid(row=2, column=1, columnspan=2)
-email_username_entry.insert(index=0, string="example")
+email_username_entry.insert(index=0, string="example123@email.com")
 
 password_entry = Entry(width=27)
-password_entry.place(x=131, y=247.5)
+password_entry.place(x=131, y=255)
 
 # All Buttons:
 generate_button = Button(text="Generate Password", command=generate_password)
@@ -79,5 +131,8 @@ generate_button.grid(row=3, column=2)
 
 add_button = Button(text="Add", width=36, command=save)
 add_button.grid(row=4, column=1, columnspan=2)
+
+search_button = Button(text="Search", command=search_password)
+search_button.grid(row=1, column=2)
 
 window.mainloop()
